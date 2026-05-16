@@ -90,8 +90,8 @@
         }
         textarea {
             field-sizing: content;
-            min-height: 2.25rem;
-            max-height: 10rem;
+            min-height: 3.25rem;
+            max-height: 14rem;
         }
         .meta-row {
             display: flex;
@@ -99,7 +99,7 @@
             gap: 0.5rem;
         }
         .meta-label {
-            font-size: 0.625rem;
+            font-size: 1rem;
             font-weight: 500;
             text-transform: uppercase;
             letter-spacing: 0.08em;
@@ -108,84 +108,84 @@
         }
         .meta-value {
             font-family: "SF Mono", "Cascadia Code", "Fira Code", monospace;
-            font-size: 0.75rem;
+            font-size: 1.125rem;
             color: oklch(0.58 0.002 260);
         }
     </style>
 </head>
-<body class="font-sans text-content-primary antialiased min-h-screen">
+<body class="font-sans text-content-primary antialiased min-h-screen text-[1.375rem]">
 
-    <div class="mx-auto max-w-[42rem] px-5 pt-16 pb-24">
+    <div class="mx-auto max-w-[48rem] px-8 pt-24 pb-32">
 
         <!-- Top bar -->
-        <header class="flex items-center justify-between mb-10">
-            <h1 class="font-mono text-[0.875rem] font-normal tracking-tighter text-content-primary">Repository Explainer</h1>
-            <div id="repo-status" class="flex items-center gap-1.5 text-[0.6875rem] text-content-muted">
-                <span class="w-1 h-1 rounded-full bg-dot-inactive"></span>
+        <header class="flex items-center justify-between mb-14">
+            <h1 class="font-mono text-[2.5rem] font-semibold tracking-tight text-content-primary">Repository Explainer</h1>
+            <div id="repo-status" class="flex items-center gap-2 text-[1.125rem] text-content-muted">
+                <span class="w-2 h-2 rounded-full bg-dot-inactive"></span>
                 Not indexed
             </div>
         </header>
 
         <!-- Index -->
-        <section class="mb-10">
-            <div class="flex items-baseline justify-between mb-3">
-                <h2 class="text-[0.625rem] font-medium uppercase tracking-[0.08em] text-content-secondary">Index</h2>
+        <section class="mb-14">
+            <div class="flex items-baseline justify-between mb-5">
+                <h2 class="text-[1rem] font-medium uppercase tracking-[0.08em] text-content-secondary">Index</h2>
             </div>
 
-            <form id="index-form" class="flex gap-2">
+            <form id="index-form" class="flex gap-3">
                 <div class="input-bar flex-1 flex items-center border border-edge rounded bg-surface hoverable">
                     <input
                         type="text"
                         id="repo-url"
                         placeholder="github.com/user/repo"
-                        class="flex-1 bg-transparent text-[0.8125rem] text-content-primary placeholder:text-content-muted py-[0.4375rem] px-2.5"
+                        class="flex-1 bg-transparent text-[1.375rem] text-content-primary placeholder:text-content-muted py-3.5 px-4"
                         required
                     >
                 </div>
                 <button
                     type="submit"
                     id="index-btn"
-                    class="btn-primary px-3 py-[0.4375rem] rounded bg-button-bg text-button-text border border-edge text-[0.8125rem] font-medium leading-none"
+                    class="btn-primary px-5 py-3.5 rounded bg-button-bg text-button-text border border-edge text-[1.375rem] font-medium leading-none"
                 >
                     Index
                 </button>
             </form>
 
             <!-- Progress line -->
-            <div id="index-progress" class="hidden mt-2.5 h-px bg-edge overflow-hidden rounded">
+            <div id="index-progress" class="hidden mt-3.5 h-px bg-edge overflow-hidden rounded">
                 <div class="h-full bg-content-secondary origin-left animate-progress"></div>
             </div>
 
             <!-- Status text -->
-            <div id="index-status" class="hidden mt-2 flex items-center gap-1.5 text-[0.8125rem]">
-                <span id="index-status-dot" class="w-1 h-1 rounded-full shrink-0 bg-dot-active"></span>
+            <div id="index-status" class="hidden mt-3 flex items-center gap-2 text-[1.375rem]">
+                <span id="index-status-dot" class="w-[3px] h-[3px] rounded-full shrink-0 bg-dot-active"></span>
                 <span id="index-status-text" class="text-content-secondary"></span>
             </div>
         </section>
 
         <!-- Divider -->
-        <div class="h-px bg-edge mb-10"></div>
+        <div class="h-px bg-edge mb-14"></div>
 
         <!-- Query -->
         <section>
-            <div class="flex items-baseline justify-between mb-3">
-                <h2 class="text-[0.625rem] font-medium uppercase tracking-[0.08em] text-content-secondary">Query</h2>
+            <div class="flex items-baseline justify-between mb-5">
+                <h2 class="text-[1rem] font-medium uppercase tracking-[0.08em] text-content-secondary">Query</h2>
             </div>
 
-            <form id="query-form" class="mb-5">
+            <form id="query-form" class="mb-7">
                 <div class="input-bar border border-edge rounded bg-surface hoverable">
                     <textarea
                         id="question"
                         placeholder="How does authentication work?"
                         rows="1"
-                        class="w-full bg-transparent text-[0.8125rem] text-content-primary placeholder:text-content-muted py-[0.4375rem] px-2.5 resize-none"
+                        class="w-full bg-transparent text-[1.375rem] text-content-primary placeholder:text-content-muted py-3.5 px-4 resize-none"
                     ></textarea>
                 </div>
-                <div class="flex justify-end mt-2">
+                <div class="flex justify-end mt-3">
                     <button
                         type="submit"
                         id="query-btn"
-                        class="btn-primary px-3 py-[0.4375rem] rounded bg-button-bg text-button-text border border-edge text-[0.8125rem] font-medium leading-none"
+                        class="btn-primary px-5 py-3.5 rounded bg-button-bg text-button-text border border-edge text-[1.375rem] font-medium leading-none"
                     >
                         Query
                     </button>
@@ -193,16 +193,16 @@
             </form>
 
             <!-- Query disabled state -->
-            <div id="query-disabled" class="text-[0.8125rem] text-content-dim italic py-1">
+            <div id="query-disabled" class="text-content-dim italic py-1.5">
                 Index a repository to query
             </div>
 
             <!-- Results -->
             <div id="query-result" class="hidden">
-                <div id="answer-text" class="text-[0.8125rem] text-content-primary leading-[1.7] whitespace-pre-wrap"></div>
+                <div id="answer-text" class="text-[1.375rem] text-content-primary leading-[1.7] whitespace-pre-wrap"></div>
 
                 <!-- Citations row -->
-                <div id="citations" class="hidden mt-4 pt-3 border-t border-edge">
+                <div id="citations" class="hidden mt-6 pt-4 border-t border-edge">
                     <div class="meta-row">
                         <span class="meta-label">Citations</span>
                         <span id="citations-values" class="meta-value"></span>
@@ -210,7 +210,7 @@
                 </div>
 
                 <!-- Files row -->
-                <div id="relevant-file" class="hidden mt-2">
+                <div id="relevant-file" class="hidden mt-3">
                     <div class="meta-row">
                         <span class="meta-label">Files</span>
                         <span id="files-values" class="meta-value"></span>
