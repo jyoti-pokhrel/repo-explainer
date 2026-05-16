@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CodeSage — Hybrid RAG for Codebases</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>CodeSage</h1>
+            <p>Ask questions about any GitHub repository</p>
+        </header>
+
+        <section class="index-section">
+            <h2>Index Repository</h2>
+            <form id="index-form">
+                <input
+                    type="text"
+                    id="repo-url"
+                    placeholder="https://github.com/user/repo"
+                    required
+                >
+                <button type="submit">Index</button>
+            </form>
+            <div id="index-status" class="status hidden"></div>
+        </section>
+
+        <section class="query-section">
+            <h2>Ask a Question</h2>
+            <form id="query-form">
+                <textarea
+                    id="question"
+                    placeholder="How does authentication work?"
+                    rows="3"
+                ></textarea>
+                <button type="submit">Query</button>
+            </form>
+            <div id="query-result" class="result hidden"></div>
+        </section>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
