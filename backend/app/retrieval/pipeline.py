@@ -1,6 +1,7 @@
 from backend.app.ingestion.models import Chunk
 from backend.app.retrieval.bm25 import BM25Search
 from backend.app.retrieval.dense import embed_chunks, search_dense
+from backend.app.retrieval.reranker import rerank
 from backend.app.retrieval.rrf import reciprocal_rank_fusion
 from backend.app.retrieval.store import store_chunks
 
@@ -25,4 +26,5 @@ def query_repo(job_id: str, question: str, top_k: int = 5) -> list[tuple[Chunk, 
     bm25_results = bm25.search(question, top_k=20)
     dense_results = search_dense(question, job_id, top_k=20)
 
-    return reciprocal_rank_fusion(bm25_results, dense_results, top_k=top_k)
+    fused = reciprocal_rank_fusion(bm25_results, dense_results, top_k=20)
+    return rerank(question, fused, top_k=top_k)
