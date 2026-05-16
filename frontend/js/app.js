@@ -2,6 +2,8 @@ const indexForm = document.getElementById("index-form");
 const indexStatus = document.getElementById("index-status");
 const queryForm = document.getElementById("query-form");
 const queryResult = document.getElementById("query-result");
+const citationsEl = document.getElementById("citations");
+const filesEl = document.getElementById("relevant-files");
 
 indexForm.addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -56,6 +58,8 @@ queryForm.addEventListener("submit", async (e) => {
 
     queryResult.classList.remove("hidden");
     queryResult.textContent = "Searching...";
+    citationsEl.classList.add("hidden");
+    filesEl.classList.add("hidden");
 
     const res = await fetch("/api/query", {
         method: "POST",
@@ -65,4 +69,14 @@ queryForm.addEventListener("submit", async (e) => {
 
     const data = await res.json();
     queryResult.textContent = data.answer;
+
+    if (data.citations && data.citations.length) {
+        citationsEl.classList.remove("hidden");
+        citationsEl.textContent = "Citations: " + data.citations.join(", ");
+    }
+
+    if (data.relevant_files && data.relevant_files.length) {
+        filesEl.classList.remove("hidden");
+        filesEl.textContent = "Files: " + data.relevant_files.join(", ");
+    }
 });
