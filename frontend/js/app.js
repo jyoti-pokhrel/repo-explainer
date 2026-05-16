@@ -21,12 +21,12 @@ let indexed = false;
 function enableQuery() {
     indexed = true;
     queryDisabled.classList.add("hidden");
-    repoStatus.innerHTML = '<span class="w-1 h-1 rounded-full bg-dot-active"></span><span class="text-content-secondary">Indexed</span>';
+    repoStatus.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-dot-active"></span><span class="text-content-secondary">Indexed</span>';
 }
 
 function setStatus(state, message) {
     indexStatus.classList.remove("hidden");
-    indexStatusDot.className = "w-1 h-1 rounded-full shrink-0";
+    indexStatusDot.className = "w-1.5 h-1.5 rounded-full shrink-0";
 
     if (state === "processing") {
         indexStatusDot.classList.add("bg-dot-active");
