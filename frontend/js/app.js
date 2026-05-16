@@ -1,17 +1,65 @@
 const indexForm = document.getElementById("index-form");
+const indexBtn = document.getElementById("index-btn");
+const indexProgress = document.getElementById("index-progress");
 const indexStatus = document.getElementById("index-status");
+const indexStatusDot = document.getElementById("index-status-dot");
+const indexStatusText = document.getElementById("index-status-text");
+const repoStatus = document.getElementById("repo-status");
+
 const queryForm = document.getElementById("query-form");
+const queryBtn = document.getElementById("query-btn");
+const queryDisabled = document.getElementById("query-disabled");
 const queryResult = document.getElementById("query-result");
-const citationsEl = document.getElementById("citations");
-const filesEl = document.getElementById("relevant-files");
+const answerText = document.getElementById("answer-text");
+const citations = document.getElementById("citations");
+const citationsValues = document.getElementById("citations-values");
+const filesSection = document.getElementById("relevant-file");
+const filesValues = document.getElementById("files-values");
+
+let indexed = false;
+
+function enableQuery() {
+    indexed = true;
+    queryDisabled.classList.add("hidden");
+    repoStatus.innerHTML = '<span class="w-1 h-1 rounded-full bg-state-ok"></span><span class="text-content-secondary">Indexed</span>';
+}
+
+function setStatus(state, message) {
+    indexStatus.classList.remove("hidden");
+    indexStatusDot.className = "w-1 h-1 rounded-full shrink-0";
+
+    if (state === "processing") {
+        indexStatusDot.classList.add("bg-state-busy");
+        indexStatusText.textContent = message;
+        indexProgress.classList.remove("hidden");
+    } else if (state === "completed") {
+        indexStatusDot.classList.add("bg-state-ok");
+        indexStatusText.textContent = message;
+        indexProgress.classList.add("hidden");
+        enableQuery();
+    } else if (state === "failed") {
+        indexStatusDot.classList.add("bg-state-fail");
+        indexStatusText.textContent = message;
+        indexProgress.classList.add("hidden");
+    }
+}
+
+function hideStatus() {
+    indexStatus.classList.add("hidden");
+    indexProgress.classList.add("hidden");
+}
+
+function joinValues(arr) {
+    return arr.join(", ");
+}
 
 indexForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     const url = document.getElementById("repo-url").value.trim();
 
-    indexStatus.classList.remove("hidden", "processing", "completed", "failed");
-    indexStatus.classList.add("processing");
-    indexStatus.textContent = "Starting indexing...";
+    indexBtn.disabled = true;
+    hideStatus();
+    setStatus("processing", "Starting indexing...");
 
     const res = await fetch("/api/index", {
         method: "POST",
@@ -21,9 +69,8 @@ indexForm.addEventListener("submit", async (e) => {
 
     const data = await res.json();
     if (data.error) {
-        indexStatus.classList.remove("processing");
-        indexStatus.classList.add("failed");
-        indexStatus.textContent = data.error;
+        setStatus("failed", data.error);
+        indexBtn.disabled = false;
         return;
     }
 
@@ -35,19 +82,16 @@ async function pollStatus(jobId) {
         const res = await fetch(`/api/status/${jobId}`);
         const data = await res.json();
 
-        indexStatus.classList.remove("processing", "completed", "failed");
-
         if (data.status === "processing") {
-            indexStatus.classList.add("processing");
-            indexStatus.textContent = data.message;
+            setStatus("processing", data.message);
         } else if (data.status === "completed") {
             clearInterval(interval);
-            indexStatus.classList.add("completed");
-            indexStatus.textContent = data.message;
+            setStatus("completed", data.message);
+            indexBtn.disabled = false;
         } else if (data.status === "failed") {
             clearInterval(interval);
-            indexStatus.classList.add("failed");
-            indexStatus.textContent = `Failed: ${data.message}`;
+            setStatus("failed", data.message);
+            indexBtn.disabled = false;
         }
     }, 1500);
 }
@@ -56,10 +100,11 @@ queryForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     const question = document.getElementById("question").value.trim();
 
+    queryBtn.disabled = true;
     queryResult.classList.remove("hidden");
-    queryResult.textContent = "Searching...";
-    citationsEl.classList.add("hidden");
-    filesEl.classList.add("hidden");
+    answerText.textContent = "Searching...";
+    citations.classList.add("hidden");
+    filesSection.classList.add("hidden");
 
     const res = await fetch("/api/query", {
         method: "POST",
@@ -68,15 +113,17 @@ queryForm.addEventListener("submit", async (e) => {
     });
 
     const data = await res.json();
-    queryResult.textContent = data.answer;
+    answerText.textContent = data.answer;
 
     if (data.citations && data.citations.length) {
-        citationsEl.classList.remove("hidden");
-        citationsEl.textContent = "Citations: " + data.citations.join(", ");
+        citations.classList.remove("hidden");
+        citationsValues.textContent = joinValues(data.citations);
     }
 
     if (data.relevant_files && data.relevant_files.length) {
-        filesEl.classList.remove("hidden");
-        filesEl.textContent = "Files: " + data.relevant_files.join(", ");
+        filesSection.classList.remove("hidden");
+        filesValues.textContent = joinValues(data.relevant_files);
     }
+
+    queryBtn.disabled = false;
 });
