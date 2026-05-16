@@ -23,7 +23,27 @@ class TestTokenize:
 
     def test_lowercase(self):
         tokens = tokenize("Authentication")
-        assert "authentication" in tokens
+        assert "authent" in tokens
+
+    def test_stemming(self):
+        tokens = tokenize("papers retrieval working")
+        assert "paper" in tokens
+        assert "retriev" in tokens
+        assert "work" in tokens
+
+    def test_stop_words_removed_in_query(self):
+        tokens = tokenize("how does the paper retrieval work", is_query=True)
+        assert "how" not in tokens
+        assert "does" not in tokens
+        assert "the" not in tokens
+        assert "paper" in tokens
+        assert "retriev" in tokens
+
+    def test_stop_words_kept_in_corpus(self):
+        tokens = tokenize("how does the paper retrieval work", is_query=False)
+        assert "how" in tokens
+        assert "doe" in tokens
+        assert "the" in tokens
 
 
 class TestBM25Search:
@@ -41,9 +61,30 @@ class TestBM25Search:
         assert len(results) == 2
         assert results[0][0].name in ("authenticate_user", "AuthMiddleware")
 
+    def test_stemming_matches_variations(self):
+        chunks = [
+            Chunk(content="def retrieve_papers(): pass", file_path="search.py", chunk_type="function", start_line=1, end_line=1, name="retrieve_papers", language="python"),
+            Chunk(content="def calculate_total(): pass", file_path="cart.py", chunk_type="function", start_line=1, end_line=1, name="calculate_total", language="python"),
+        ]
+
+        bm25 = BM25Search()
+        bm25.build(chunks)
+
+        results = bm25.search("paper retrieval", top_k=1)
+        assert results[0][0].name == "retrieve_papers"
+
     def test_empty_index(self):
         bm25 = BM25Search()
         assert bm25.search("test") == []
+
+    def test_query_only_stop_words(self):
+        chunks = [
+            Chunk(content="def foo(): pass", file_path="a.py", chunk_type="function", start_line=1, end_line=1, language="python"),
+        ]
+
+        bm25 = BM25Search()
+        bm25.build(chunks)
+        assert bm25.search("how does the") == []
 
 
 class TestRRF:

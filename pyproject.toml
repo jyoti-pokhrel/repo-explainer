@@ -21,6 +21,8 @@ dependencies = [
     "sentence-transformers>=3.0",
     "python-dotenv>=1.0",
     "groq>=0.9",
+    "nltk>=3.8",
+    "einops>=0.8.2",
 ]
 
 [project.optional-dependencies]
