@@ -1,9 +1,8 @@
 from backend.app.ingestion.models import Chunk
 from backend.app.retrieval.bm25 import BM25Search
 from backend.app.retrieval.dense import embed_chunks, search_dense
-from backend.app.retrieval.reranker import rerank
 from backend.app.retrieval.rrf import reciprocal_rank_fusion
-from backend.app.retrieval.store import store_chunks
+from backend.app.retrieval.store import get_chunks, store_chunks
 
 _bm25_indices: dict[str, BM25Search] = {}
 
@@ -18,7 +17,7 @@ def build_index(job_id: str, chunks: list[Chunk]) -> None:
     embed_chunks(chunks, job_id)
 
 
-def query_repo(job_id: str, question: str, top_k: int = 5) -> list[tuple[Chunk, float]]:
+def query_repo(job_id: str, question: str, top_k: int = 10) -> list[tuple[Chunk, float]]:
     bm25 = _bm25_indices.get(job_id)
     if not bm25:
         return []
@@ -26,5 +25,15 @@ def query_repo(job_id: str, question: str, top_k: int = 5) -> list[tuple[Chunk, 
     bm25_results = bm25.search(question, top_k=20)
     dense_results = search_dense(question, job_id, top_k=20)
 
-    fused = reciprocal_rank_fusion(bm25_results, dense_results, top_k=20)
-    return rerank(question, fused, top_k=top_k)
+    fused = reciprocal_rank_fusion(bm25_results, dense_results, top_k=top_k)
+
+    full_chunks = []
+    for chunk, score in fused:
+        for stored in get_chunks(job_id):
+            if stored.file_path == chunk.file_path and stored.start_line == chunk.start_line:
+                full_chunks.append((stored, score))
+                break
+        else:
+            full_chunks.append((chunk, score))
+
+    return full_chunks

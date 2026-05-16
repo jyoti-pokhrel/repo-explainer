@@ -1,13 +1,22 @@
 import re
+import nltk
+from nltk.stem import PorterStemmer
+from nltk.corpus import stopwords
 from rank_bm25 import BM25Okapi
 
 from backend.app.ingestion.models import Chunk
 
+nltk.download("punkt_tab", quiet=True)
+nltk.download("stopwords", quiet=True)
+
 CAMEL_CASE = re.compile(r"([a-z0-9])([A-Z])")
 CODE_OPERATORS = re.compile(r"(==|!=|<=|>=|->|::|\+\+|--|&&|\|\||\.\.\.)")
 
+_stemmer = PorterStemmer()
+_stop_words = set(stopwords.words("english"))
 
-def tokenize(text: str) -> list[str]:
+
+def tokenize(text: str, is_query: bool = False) -> list[str]:
     tokens: list[str] = []
     for op in CODE_OPERATORS.finditer(text):
         tokens.append(op.group())
@@ -16,8 +25,11 @@ def tokenize(text: str) -> list[str]:
     text = CAMEL_CASE.sub(r"\1 \2", text)
     for part in text.split():
         part = part.strip().lower()
-        if part:
-            tokens.append(part)
+        if not part:
+            continue
+        if is_query and part in _stop_words:
+            continue
+        tokens.append(_stemmer.stem(part))
     return tokens
 
 
@@ -36,7 +48,10 @@ class BM25Search:
         if not self._bm25 or not self._chunks:
             return []
 
-        query_tokens = tokenize(query)
+        query_tokens = tokenize(query, is_query=True)
+        if not query_tokens:
+            return []
+
         scores = self._bm25.get_scores(query_tokens)
 
         ranked = sorted(
