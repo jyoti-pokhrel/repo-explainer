@@ -13,7 +13,7 @@ MODEL_NAME = "nomic-ai/nomic-embed-text-v1.5"
 INDEX_NAME = "codesage"
 DIMENSION = 768
 
-_model = SentenceTransformer(MODEL_NAME, trust_remote_code=True)
+_model = SentenceTransformer(MODEL_NAME, trust_remote_code=True, device="cpu")
 _pc = Pinecone(api_key=os.environ["PINECONE_API_KEY"])
 
 
