@@ -1,0 +1,134 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #0f1117;
+    color: #e1e4e8;
+    min-height: 100vh;
+}
+
+.container {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem;
+}
+
+header {
+    text-align: center;
+    margin-bottom: 3rem;
+}
+
+header h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #58a6ff;
+    margin-bottom: 0.5rem;
+}
+
+header p {
+    color: #8b949e;
+    font-size: 1.1rem;
+}
+
+section {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+section h2 {
+    font-size: 1.25rem;
+    margin-bottom: 1rem;
+    color: #c9d1d9;
+}
+
+form {
+    display: flex;
+    gap: 0.75rem;
+}
+
+input[type="text"],
+textarea {
+    flex: 1;
+    padding: 0.75rem 1rem;
+    background: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    color: #e1e4e8;
+    font-size: 1rem;
+    font-family: inherit;
+    resize: vertical;
+}
+
+input[type="text"]:focus,
+textarea:focus {
+    outline: none;
+    border-color: #58a6ff;
+    box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.15);
+}
+
+button {
+    padding: 0.75rem 1.5rem;
+    background: #238636;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+button:hover {
+    background: #2ea043;
+}
+
+button:disabled {
+    background: #30363d;
+    cursor: not-allowed;
+}
+
+.status,
+.result {
+    margin-top: 1rem;
+    padding: 1rem;
+    border-radius: 8px;
+    font-size: 0.95rem;
+}
+
+.status {
+    background: #1c2333;
+    border: 1px solid #30363d;
+}
+
+.status.processing {
+    border-color: #58a6ff;
+    color: #58a6ff;
+}
+
+.status.completed {
+    border-color: #238636;
+    color: #3fb950;
+}
+
+.status.failed {
+    border-color: #f85149;
+    color: #f85149;
+}
+
+.result {
+    background: #1c2333;
+    border: 1px solid #30363d;
+    white-space: pre-wrap;
+    line-height: 1.6;
+}
+
+.hidden {
+    display: none;
+}
