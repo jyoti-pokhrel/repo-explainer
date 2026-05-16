@@ -14,30 +14,30 @@
                         mono: ['"SF Mono"', '"Cascadia Code"', '"Fira Code"', 'monospace'],
                     },
                     colors: {
-                        base: 'oklch(0.14 0.003 260)',
+                        base: 'oklch(0.13 0.002 260)',
                         surface: {
-                            DEFAULT: 'oklch(0.17 0.004 260)',
-                            raised: 'oklch(0.20 0.004 260)',
+                            DEFAULT: 'oklch(0.16 0.002 260)',
+                            raised: 'oklch(0.19 0.002 260)',
                         },
                         edge: {
-                            DEFAULT: 'oklch(0.24 0.005 260)',
-                            hover: 'oklch(0.30 0.006 260)',
+                            DEFAULT: 'oklch(0.22 0.002 260)',
+                            hover: 'oklch(0.28 0.002 260)',
                         },
                         content: {
-                            primary: 'oklch(0.82 0.005 260)',
-                            secondary: 'oklch(0.58 0.006 260)',
-                            muted: 'oklch(0.42 0.004 260)',
-                            dim: 'oklch(0.32 0.003 260)',
+                            primary: 'oklch(0.85 0.002 260)',
+                            secondary: 'oklch(0.58 0.002 260)',
+                            muted: 'oklch(0.40 0.002 260)',
+                            dim: 'oklch(0.28 0.002 260)',
                         },
-                        accent: {
-                            DEFAULT: 'oklch(0.60 0.12 195)',
-                            hover: 'oklch(0.66 0.12 195)',
-                            surface: 'oklch(0.60 0.12 195 / 0.10)',
+                        button: {
+                            bg: 'oklch(0.22 0.002 260)',
+                            hover: 'oklch(0.30 0.002 260)',
+                            text: 'oklch(0.90 0.002 260)',
                         },
-                        state: {
-                            ok: 'oklch(0.62 0.14 155)',
-                            fail: 'oklch(0.58 0.18 25)',
-                            busy: 'oklch(0.65 0.10 210)',
+                        dot: {
+                            active: 'oklch(0.72 0.002 260)',
+                            inactive: 'oklch(0.30 0.002 260)',
+                            focus: 'oklch(0.65 0.002 260)',
                         }
                     },
                     borderRadius: {
@@ -61,19 +61,19 @@
     </script>
     <style>
         body {
-            background-color: oklch(0.14 0.003 260);
+            background-color: oklch(0.13 0.002 260);
         }
         input:focus, textarea:focus, button:focus-visible {
             outline: none;
         }
         .input-bar:focus-within {
-            border-color: oklch(0.60 0.12 195);
+            border-color: oklch(0.65 0.002 260);
         }
         .btn-primary {
-            transition: background-color 150ms ease-out, opacity 150ms ease-out;
+            transition: background-color 150ms ease-out, border-color 150ms ease-out, opacity 150ms ease-out;
         }
         .btn-primary:hover:not(:disabled) {
-            background-color: oklch(0.66 0.12 195);
+            background-color: oklch(0.30 0.002 260);
         }
         .btn-primary:disabled {
             opacity: 0.35;
@@ -83,10 +83,10 @@
             transition: border-color 150ms ease-out;
         }
         .hoverable:hover {
-            border-color: oklch(0.30 0.006 260);
+            border-color: oklch(0.28 0.002 260);
         }
         ::selection {
-            background: oklch(0.60 0.12 195 / 0.25);
+            background: oklch(0.50 0.002 260 / 0.20);
         }
         textarea {
             field-sizing: content;
@@ -99,37 +99,37 @@
             gap: 0.5rem;
         }
         .meta-label {
-            font-size: 0.6875rem;
+            font-size: 0.625rem;
             font-weight: 500;
             text-transform: uppercase;
-            letter-spacing: 0.05em;
-            color: oklch(0.42 0.004 260);
+            letter-spacing: 0.08em;
+            color: oklch(0.40 0.002 260);
             white-space: nowrap;
         }
         .meta-value {
             font-family: "SF Mono", "Cascadia Code", "Fira Code", monospace;
             font-size: 0.75rem;
-            color: oklch(0.58 0.006 260);
+            color: oklch(0.58 0.002 260);
         }
     </style>
 </head>
 <body class="font-sans text-content-primary antialiased min-h-screen">
 
-    <div class="mx-auto max-w-[40rem] px-5 pt-12 pb-24">
+    <div class="mx-auto max-w-[42rem] px-5 pt-16 pb-24">
 
         <!-- Top bar -->
         <header class="flex items-center justify-between mb-10">
-            <h1 class="text-[0.8125rem] font-medium tracking-tight text-content-primary">Repository Explainer</h1>
+            <h1 class="font-mono text-[0.875rem] font-normal tracking-tighter text-content-primary">Repository Explainer</h1>
             <div id="repo-status" class="flex items-center gap-1.5 text-[0.6875rem] text-content-muted">
-                <span class="w-1 h-1 rounded-full bg-content-muted"></span>
+                <span class="w-1 h-1 rounded-full bg-dot-inactive"></span>
                 Not indexed
             </div>
         </header>
 
         <!-- Index -->
-        <section class="mb-8">
+        <section class="mb-10">
             <div class="flex items-baseline justify-between mb-3">
-                <h2 class="text-[0.6875rem] font-medium uppercase tracking-[0.06em] text-content-secondary">Index</h2>
+                <h2 class="text-[0.625rem] font-medium uppercase tracking-[0.08em] text-content-secondary">Index</h2>
             </div>
 
             <form id="index-form" class="flex gap-2">
@@ -145,7 +145,7 @@
                 <button
                     type="submit"
                     id="index-btn"
-                    class="btn-primary px-3 py-[0.4375rem] rounded bg-accent text-white text-[0.8125rem] font-medium leading-none"
+                    class="btn-primary px-3 py-[0.4375rem] rounded bg-button-bg text-button-text border border-edge text-[0.8125rem] font-medium leading-none"
                 >
                     Index
                 </button>
@@ -153,23 +153,23 @@
 
             <!-- Progress line -->
             <div id="index-progress" class="hidden mt-2.5 h-px bg-edge overflow-hidden rounded">
-                <div class="h-full bg-accent origin-left animate-progress"></div>
+                <div class="h-full bg-content-secondary origin-left animate-progress"></div>
             </div>
 
             <!-- Status text -->
             <div id="index-status" class="hidden mt-2 flex items-center gap-1.5 text-[0.8125rem]">
-                <span id="index-status-dot" class="w-1 h-1 rounded-full shrink-0"></span>
+                <span id="index-status-dot" class="w-1 h-1 rounded-full shrink-0 bg-dot-active"></span>
                 <span id="index-status-text" class="text-content-secondary"></span>
             </div>
         </section>
 
         <!-- Divider -->
-        <div class="h-px bg-edge mb-8"></div>
+        <div class="h-px bg-edge mb-10"></div>
 
         <!-- Query -->
         <section>
             <div class="flex items-baseline justify-between mb-3">
-                <h2 class="text-[0.6875rem] font-medium uppercase tracking-[0.06em] text-content-secondary">Query</h2>
+                <h2 class="text-[0.625rem] font-medium uppercase tracking-[0.08em] text-content-secondary">Query</h2>
             </div>
 
             <form id="query-form" class="mb-5">
@@ -185,7 +185,7 @@
                     <button
                         type="submit"
                         id="query-btn"
-                        class="btn-primary px-3 py-[0.4375rem] rounded bg-accent text-white text-[0.8125rem] font-medium leading-none"
+                        class="btn-primary px-3 py-[0.4375rem] rounded bg-button-bg text-button-text border border-edge text-[0.8125rem] font-medium leading-none"
                     >
                         Query
                     </button>
@@ -193,13 +193,13 @@
             </form>
 
             <!-- Query disabled state -->
-            <div id="query-disabled" class="text-[0.8125rem] text-content-dim py-1">
+            <div id="query-disabled" class="text-[0.8125rem] text-content-dim italic py-1">
                 Index a repository to query
             </div>
 
             <!-- Results -->
             <div id="query-result" class="hidden">
-                <div id="answer-text" class="text-[0.8125rem] text-content-primary leading-[1.65] whitespace-pre-wrap"></div>
+                <div id="answer-text" class="text-[0.8125rem] text-content-primary leading-[1.7] whitespace-pre-wrap"></div>
 
                 <!-- Citations row -->
                 <div id="citations" class="hidden mt-4 pt-3 border-t border-edge">

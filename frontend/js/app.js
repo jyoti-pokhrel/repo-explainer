@@ -21,7 +21,7 @@ let indexed = false;
 function enableQuery() {
     indexed = true;
     queryDisabled.classList.add("hidden");
-    repoStatus.innerHTML = '<span class="w-1 h-1 rounded-full bg-state-ok"></span><span class="text-content-secondary">Indexed</span>';
+    repoStatus.innerHTML = '<span class="w-1 h-1 rounded-full bg-dot-active"></span><span class="text-content-secondary">Indexed</span>';
 }
 
 function setStatus(state, message) {
@@ -29,16 +29,16 @@ function setStatus(state, message) {
     indexStatusDot.className = "w-1 h-1 rounded-full shrink-0";
 
     if (state === "processing") {
-        indexStatusDot.classList.add("bg-state-busy");
+        indexStatusDot.classList.add("bg-dot-active");
         indexStatusText.textContent = message;
         indexProgress.classList.remove("hidden");
     } else if (state === "completed") {
-        indexStatusDot.classList.add("bg-state-ok");
+        indexStatusDot.classList.add("bg-dot-active");
         indexStatusText.textContent = message;
         indexProgress.classList.add("hidden");
         enableQuery();
     } else if (state === "failed") {
-        indexStatusDot.classList.add("bg-state-fail");
+        indexStatusDot.classList.add("bg-dot-active");
         indexStatusText.textContent = message;
         indexProgress.classList.add("hidden");
     }
