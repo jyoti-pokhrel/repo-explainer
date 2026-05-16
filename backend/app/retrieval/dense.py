@@ -1,5 +1,6 @@
 import os
 
+import torch
 from dotenv import load_dotenv
 from pinecone import Pinecone, ServerlessSpec
 from sentence_transformers import SentenceTransformer
@@ -9,12 +10,18 @@ from backend.app.retrieval.store import get_chunks
 
 load_dotenv()
 
-MODEL_NAME = "nomic-ai/nomic-embed-text-v1.5"
+MODEL_NAME = "BAAI/bge-small-en-v1.5"
 INDEX_NAME = "codesage"
-DIMENSION = 768
+DIMENSION = 384
 
-_model = SentenceTransformer(MODEL_NAME, trust_remote_code=True, device="cpu")
+_device = "cuda" if torch.cuda.is_available() else "cpu"
+_model = SentenceTransformer(MODEL_NAME, device=_device)
 _pc = Pinecone(api_key=os.environ["PINECONE_API_KEY"])
+
+
+def _clear_gpu():
+    if _device == "cuda":
+        torch.cuda.empty_cache()
 
 
 def _get_index():
@@ -44,7 +51,12 @@ def _enrich_chunk(chunk: Chunk) -> str:
 def embed_chunks(chunks: list[Chunk], job_id: str) -> None:
     index = _get_index()
     enriched = [_enrich_chunk(c) for c in chunks]
-    embeddings = _model.encode(enriched, show_progress_bar=False).tolist()
+    embeddings = _model.encode(
+        enriched,
+        show_progress_bar=False,
+        batch_size=32,
+        normalize_embeddings=True,
+    ).tolist()
 
     vectors = []
     for i, chunk in enumerate(chunks):
@@ -67,10 +79,12 @@ def embed_chunks(chunks: list[Chunk], job_id: str) -> None:
     for i in range(0, len(vectors), batch_size):
         index.upsert(vectors=vectors[i : i + batch_size], namespace=job_id)
 
+    _clear_gpu()
+
 
 def search_dense(query: str, job_id: str, top_k: int = 20) -> list[tuple[Chunk, float]]:
     index = _get_index()
-    query_embedding = _model.encode([query]).tolist()[0]
+    query_embedding = _model.encode([query], normalize_embeddings=True).tolist()[0]
 
     results = index.query(
         vector=query_embedding,
@@ -79,7 +93,6 @@ def search_dense(query: str, job_id: str, top_k: int = 20) -> list[tuple[Chunk, 
         namespace=job_id,
     )
 
-    stored_chunks = {c.file_path: c for c in get_chunks(job_id)}
     chunks_with_scores = []
 
     for match in results.matches:
