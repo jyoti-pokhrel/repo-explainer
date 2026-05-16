@@ -102,7 +102,7 @@ queryForm.addEventListener("submit", async (e) => {
 
     queryBtn.disabled = true;
     queryResult.classList.remove("hidden");
-    answerText.textContent = "Searching...";
+    answerText.textContent = "Retrieving...";
     citations.classList.add("hidden");
     filesSection.classList.add("hidden");
 
@@ -112,17 +112,25 @@ queryForm.addEventListener("submit", async (e) => {
         body: JSON.stringify({ question }),
     });
 
-    const data = await res.json();
-    answerText.textContent = data.answer;
+    if (res.headers.get("content-type")?.includes("text/event-stream")) {
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let answer = "";
 
-    if (data.citations && data.citations.length) {
-        citations.classList.remove("hidden");
-        citationsValues.textContent = joinValues(data.citations);
-    }
-
-    if (data.relevant_files && data.relevant_files.length) {
-        filesSection.classList.remove("hidden");
-        filesValues.textContent = joinValues(data.relevant_files);
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            answer += decoder.decode(value, { stream: true });
+            answerText.textContent = answer;
+        }
+    } else {
+        const data = await res.json();
+        if (data.error) {
+            answerText.textContent = data.error;
+            queryBtn.disabled = false;
+            return;
+        }
+        answerText.textContent = data.answer;
     }
 
     queryBtn.disabled = false;

@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 from fastapi import FastAPI, BackgroundTasks
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 from dotenv import load_dotenv
 
@@ -10,6 +10,7 @@ from backend.app.ingestion.cloner import clone_repo, validate_github_url
 from backend.app.ingestion.parser import parse_repo
 from backend.app.ingestion.chunker import chunk_document
 from backend.app.retrieval import build_index, query_repo
+from backend.app.generation import stream_answer
 
 load_dotenv()
 
@@ -66,50 +67,23 @@ async def query_endpoint(request: QueryRequest):
             last_job_id = jid
 
     if not last_job_id:
-        return {
-            "answer": "No repository has been indexed yet.",
-            "citations": [],
-            "relevant_files": [],
-        }
+        return {"error": "No repository has been indexed yet."}
 
     results = query_repo(last_job_id, request.question)
     if not results:
-        return {
-            "answer": "No relevant results found.",
-            "citations": [],
-            "relevant_files": [],
-        }
+        return {"error": "No relevant results found."}
 
-    context_parts = []
     citations = []
     relevant_files = set()
-
-    for chunk, score in results:
-        citation = f"{chunk.file_path}:{chunk.start_line}-{chunk.end_line}"
-        context_parts.append(f"[{citation}]\n{chunk.content}")
-        citations.append(citation)
+    for chunk, _ in results:
+        citations.append(f"{chunk.file_path}:{chunk.start_line}-{chunk.end_line}")
         relevant_files.add(chunk.file_path)
 
-    context = "\n\n".join(context_parts)
+    async def _stream():
+        for token in stream_answer(request.question, results):
+            yield token
 
-    return {
-        "answer": _format_answer(context, results),
-        "citations": citations,
-        "relevant_files": sorted(relevant_files),
-    }
-
-
-def _format_answer(context: str, results: list[tuple]) -> str:
-    lines = ["Here are the most relevant code chunks:\n"]
-    for i, (chunk, score) in enumerate(results, 1):
-        citation = f"{chunk.file_path}:{chunk.start_line}-{chunk.end_line}"
-        name = chunk.name or ""
-        label = f"{name} " if name else ""
-        lines.append(f"{i}. **{label}** ({citation}) [score: {score:.4f}]")
-        lines.append(f"```{chunk.language}")
-        lines.append(chunk.content)
-        lines.append("```\n")
-    return "\n".join(lines)
+    return StreamingResponse(_stream(), media_type="text/event-stream")
 
 
 def _run_indexing(job_id: str, repo_url: str):
