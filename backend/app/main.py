@@ -1,12 +1,17 @@
+import os
 from pathlib import Path
 from fastapi import FastAPI, BackgroundTasks
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
+from dotenv import load_dotenv
 
 from backend.app.ingestion.cloner import clone_repo, validate_github_url
 from backend.app.ingestion.parser import parse_repo
 from backend.app.ingestion.chunker import chunk_document
+from backend.app.retrieval import build_index, query_repo
+
+load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 FRONTEND_DIR = BASE_DIR / "frontend"
@@ -54,12 +59,57 @@ async def get_status(job_id: str):
 
 
 @app.post("/api/query")
-async def query_repo(request: QueryRequest):
+async def query_endpoint(request: QueryRequest):
+    last_job_id = None
+    for jid, job in jobs.items():
+        if job.get("status") == "completed":
+            last_job_id = jid
+
+    if not last_job_id:
+        return {
+            "answer": "No repository has been indexed yet.",
+            "citations": [],
+            "relevant_files": [],
+        }
+
+    results = query_repo(last_job_id, request.question)
+    if not results:
+        return {
+            "answer": "No relevant results found.",
+            "citations": [],
+            "relevant_files": [],
+        }
+
+    context_parts = []
+    citations = []
+    relevant_files = set()
+
+    for chunk, score in results:
+        citation = f"{chunk.file_path}:{chunk.start_line}-{chunk.end_line}"
+        context_parts.append(f"[{citation}]\n{chunk.content}")
+        citations.append(citation)
+        relevant_files.add(chunk.file_path)
+
+    context = "\n\n".join(context_parts)
+
     return {
-        "answer": "Retrieval pipeline not yet implemented (Phase 2-3).",
-        "citations": [],
-        "relevant_files": [],
+        "answer": _format_answer(context, results),
+        "citations": citations,
+        "relevant_files": sorted(relevant_files),
     }
+
+
+def _format_answer(context: str, results: list[tuple]) -> str:
+    lines = ["Here are the most relevant code chunks:\n"]
+    for i, (chunk, score) in enumerate(results, 1):
+        citation = f"{chunk.file_path}:{chunk.start_line}-{chunk.end_line}"
+        name = chunk.name or ""
+        label = f"{name} " if name else ""
+        lines.append(f"{i}. **{label}** ({citation}) [score: {score:.4f}]")
+        lines.append(f"```{chunk.language}")
+        lines.append(chunk.content)
+        lines.append("```\n")
+    return "\n".join(lines)
 
 
 def _run_indexing(job_id: str, repo_url: str):
@@ -74,6 +124,9 @@ def _run_indexing(job_id: str, repo_url: str):
         for doc in documents:
             chunks = chunk_document(doc)
             all_chunks.extend(chunks)
+
+        jobs[job_id]["message"] = "Building BM25 index..."
+        build_index(job_id, all_chunks)
 
         jobs[job_id] = {
             "status": "completed",

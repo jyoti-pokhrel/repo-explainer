@@ -16,6 +16,10 @@ dependencies = [
     "tree-sitter-java>=0.23",
     "tree-sitter-c>=0.23",
     "tree-sitter-cpp>=0.23",
+    "pinecone>=9.0.0",
+    "rank-bm25>=0.2",
+    "sentence-transformers>=3.0",
+    "python-dotenv>=1.0",
 ]
 
 [project.optional-dependencies]
