@@ -13,3 +13,6 @@ wheels/
 
 # Secrets
 .env
+
+# SQLite database
+codesage.db

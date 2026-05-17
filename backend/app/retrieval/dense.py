@@ -6,7 +6,7 @@ from pinecone import Pinecone, ServerlessSpec
 from sentence_transformers import SentenceTransformer
 
 from backend.app.ingestion.models import Chunk
-from backend.app.retrieval.store import get_chunks
+from backend.app.storage import get_chunks_db
 
 load_dotenv()
 
@@ -18,23 +18,29 @@ _device = "cuda" if torch.cuda.is_available() else "cpu"
 _model = SentenceTransformer(MODEL_NAME, device=_device)
 _pc = Pinecone(api_key=os.environ["PINECONE_API_KEY"])
 
+_indexes: dict[str, object] = {}
+
 
 def _clear_gpu():
     if _device == "cuda":
         torch.cuda.empty_cache()
 
 
-def _get_index():
-    if INDEX_NAME in _pc.list_indexes().names():
-        _pc.delete_index(INDEX_NAME)
+def _get_or_create_index(job_id: str):
+    if job_id in _indexes:
+        return _indexes[job_id]
 
-    _pc.create_index(
-        name=INDEX_NAME,
-        dimension=DIMENSION,
-        metric="cosine",
-        spec=ServerlessSpec(cloud="aws", region="us-east-1"),
-    )
-    return _pc.Index(INDEX_NAME)
+    if INDEX_NAME not in _pc.list_indexes().names():
+        _pc.create_index(
+            name=INDEX_NAME,
+            dimension=DIMENSION,
+            metric="cosine",
+            spec=ServerlessSpec(cloud="aws", region="us-east-1"),
+        )
+
+    idx = _pc.Index(INDEX_NAME)
+    _indexes[job_id] = idx
+    return idx
 
 
 def _enrich_chunk(chunk: Chunk) -> str:
@@ -49,7 +55,7 @@ def _enrich_chunk(chunk: Chunk) -> str:
 
 
 def embed_chunks(chunks: list[Chunk], job_id: str) -> None:
-    index = _get_index()
+    index = _get_or_create_index(job_id)
     enriched = [_enrich_chunk(c) for c in chunks]
     embeddings = _model.encode(
         enriched,
@@ -83,7 +89,7 @@ def embed_chunks(chunks: list[Chunk], job_id: str) -> None:
 
 
 def search_dense(query: str, job_id: str, top_k: int = 20) -> list[tuple[Chunk, float]]:
-    index = _get_index()
+    index = _get_or_create_index(job_id)
     query_embedding = _model.encode([query], normalize_embeddings=True).tolist()[0]
 
     results = index.query(
@@ -93,19 +99,18 @@ def search_dense(query: str, job_id: str, top_k: int = 20) -> list[tuple[Chunk, 
         namespace=job_id,
     )
 
-    chunks_with_scores = []
+    stored = get_chunks_db(job_id)
+    stored_lookup = {(c.file_path, c.start_line, c.end_line): c for c in stored}
 
+    chunks_with_scores = []
     for match in results.matches:
         meta = match.metadata
         file_path = meta.get("file_path", "")
         start_line = meta.get("start_line", 0)
         end_line = meta.get("end_line", 0)
 
-        full_chunk = None
-        for c in get_chunks(job_id):
-            if c.file_path == file_path and c.start_line == start_line and c.end_line == end_line:
-                full_chunk = c
-                break
+        key = (file_path, start_line, end_line)
+        full_chunk = stored_lookup.get(key)
 
         if full_chunk is None:
             full_chunk = Chunk(
