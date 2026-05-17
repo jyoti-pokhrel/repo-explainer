@@ -17,6 +17,7 @@ const filesSection = document.getElementById("relevant-file");
 const filesValues = document.getElementById("files-values");
 
 let indexed = false;
+let currentJobId = null;
 
 function enableQuery() {
     indexed = true;
@@ -53,6 +54,47 @@ function joinValues(arr) {
     return arr.join(", ");
 }
 
+function displayMetadata(data) {
+    const section = document.getElementById("metadata-section");
+    section.classList.remove("hidden");
+
+    const fields = [
+        { id: "meta-project", valueId: "meta-project-value", value: data.project_name },
+        { id: "meta-description", valueId: "meta-description-value", value: data.description },
+        { id: "meta-languages", valueId: "meta-languages-value", value: data.languages?.length ? joinValues(data.languages) : null },
+        { id: "meta-frameworks", valueId: "meta-frameworks-value", value: data.frameworks?.length ? joinValues(data.frameworks) : null },
+        { id: "meta-orms", valueId: "meta-orms-value", value: data.orms?.length ? joinValues(data.orms) : null },
+        { id: "meta-databases", valueId: "meta-databases-value", value: data.databases?.length ? joinValues(data.databases) : null },
+        { id: "meta-auth", valueId: "meta-auth-value", value: data.auth_methods?.length ? joinValues(data.auth_methods) : null },
+        { id: "meta-files", valueId: "meta-files-value", value: data.file_count ? `${data.file_count} files (${data.total_lines?.toLocaleString()} lines)` : null },
+    ];
+
+    for (const field of fields) {
+        const el = document.getElementById(field.id);
+        const valueEl = document.getElementById(field.valueId);
+        if (field.value) {
+            valueEl.textContent = field.value;
+            el.classList.remove("hidden");
+        } else {
+            el.classList.add("hidden");
+        }
+    }
+}
+
+function parseSSEEvent(buffer) {
+    const lines = buffer.trim().split("\n");
+    let eventType = "message";
+    let data = "";
+    for (const line of lines) {
+        if (line.startsWith("event:")) {
+            eventType = line.slice(6).trim();
+        } else if (line.startsWith("data:")) {
+            data = line.slice(5);
+        }
+    }
+    return { type: eventType, data };
+}
+
 indexForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     const url = document.getElementById("repo-url").value.trim();
@@ -74,6 +116,7 @@ indexForm.addEventListener("submit", async (e) => {
         return;
     }
 
+    currentJobId = data.job_id;
     pollStatus(data.job_id);
 });
 
@@ -88,6 +131,12 @@ async function pollStatus(jobId) {
             clearInterval(interval);
             setStatus("completed", data.message);
             indexBtn.disabled = false;
+
+            const metaRes = await fetch(`/api/metadata/${jobId}`);
+            const metaData = await metaRes.json();
+            if (!metaData.error) {
+                displayMetadata(metaData);
+            }
         } else if (data.status === "failed") {
             clearInterval(interval);
             setStatus("failed", data.message);
@@ -102,35 +151,77 @@ queryForm.addEventListener("submit", async (e) => {
 
     queryBtn.disabled = true;
     queryResult.classList.remove("hidden");
-    answerText.textContent = "Retrieving...";
+    answerText.textContent = "Searching codebase...";
     citations.classList.add("hidden");
     filesSection.classList.add("hidden");
 
     const res = await fetch("/api/query", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question }),
+        body: JSON.stringify({ question, job_id: currentJobId }),
     });
 
-    if (res.headers.get("content-type")?.includes("text/event-stream")) {
+    if (!res.ok) {
+        const data = await res.json();
+        answerText.textContent = data.error || "Query failed.";
+        queryBtn.disabled = false;
+        return;
+    }
+
+    const contentType = res.headers.get("content-type") || "";
+
+    if (contentType.includes("application/json")) {
+        const data = await res.json();
+        if (data.error) {
+            answerText.textContent = data.error;
+        } else {
+            answerText.textContent = data.answer;
+        }
+        queryBtn.disabled = false;
+        return;
+    }
+
+    if (contentType.includes("text/event-stream")) {
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
+        let buffer = "";
         let answer = "";
+        let isStreaming = false;
 
         while (true) {
             const { done, value } = await reader.read();
             if (done) break;
-            answer += decoder.decode(value, { stream: true });
+
+            buffer += decoder.decode(value, { stream: true });
+
+            const eventEnd = buffer.indexOf("\n\n");
+            if (eventEnd === -1) continue;
+
+            const eventStr = buffer.slice(0, eventEnd);
+            buffer = buffer.slice(eventEnd + 2);
+
+            const { type, data } = parseSSEEvent(eventStr);
+
+            if (type === "error" || data.startsWith("Error:") || data.startsWith("Query timed out")) {
+                answerText.textContent = data;
+                break;
+            }
+
+            if (data === "Searching codebase..." || data === "Generating answer...") {
+                answerText.textContent = data;
+                continue;
+            }
+
+            if (!isStreaming) {
+                isStreaming = true;
+                answer = "";
+            }
+
+            answer += data;
             answerText.textContent = answer;
         }
     } else {
-        const data = await res.json();
-        if (data.error) {
-            answerText.textContent = data.error;
-            queryBtn.disabled = false;
-            return;
-        }
-        answerText.textContent = data.answer;
+        answerText.textContent = "Unexpected response format.";
     }
 
     queryBtn.disabled = false;
