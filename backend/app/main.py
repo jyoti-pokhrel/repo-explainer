@@ -1,3 +1,4 @@
+import gc
 import os
 import time
 from pathlib import Path
@@ -182,15 +183,23 @@ def _run_indexing(job_id: str, repo_url: str):
             chunks = chunk_document(doc)
             all_chunks.extend(chunks)
 
+        num_files = len(documents)
+        del documents
+        gc.collect()
+
         update_job(job_id, "processing", "Building BM25 index...")
         build_index(job_id, all_chunks)
+
+        num_chunks = len(all_chunks)
+        del all_chunks
+        gc.collect()
 
         update_job(
             job_id,
             "completed",
-            f"Indexed {len(documents)} files, {len(all_chunks)} chunks",
-            files=len(documents),
-            chunks=len(all_chunks),
+            f"Indexed {num_files} files, {num_chunks} chunks",
+            files=num_files,
+            chunks=num_chunks,
         )
 
         temp_dir.cleanup()

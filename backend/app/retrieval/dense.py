@@ -73,34 +73,41 @@ def _enrich_chunk(chunk: Chunk) -> str:
 def embed_chunks(chunks: list[Chunk], job_id: str) -> None:
     index = _get_or_create_index(job_id)
     model = _get_model()
-    enriched = [_enrich_chunk(c) for c in chunks]
-    embeddings = model.encode(
-        enriched,
-        show_progress_bar=False,
-        batch_size=32,
-        normalize_embeddings=True,
-    ).tolist()
 
-    vectors = []
-    for i, chunk in enumerate(chunks):
-        vectors.append({
-            "id": f"{job_id}-{i}",
-            "values": embeddings[i],
-            "metadata": {
-                "job_id": job_id,
-                "file_path": chunk.file_path,
-                "chunk_type": chunk.chunk_type,
-                "start_line": chunk.start_line,
-                "end_line": chunk.end_line,
-                "name": chunk.name or "",
-                "language": chunk.language,
-                "index": i,
-            },
-        })
+    encode_batch_size = 32
+    upsert_batch_size = 100
+    global_index = 0
 
-    batch_size = 100
-    for i in range(0, len(vectors), batch_size):
-        index.upsert(vectors=vectors[i : i + batch_size], namespace=job_id)
+    for i in range(0, len(chunks), encode_batch_size):
+        batch = chunks[i : i + encode_batch_size]
+        enriched = [_enrich_chunk(c) for c in batch]
+        embeddings = model.encode(
+            enriched,
+            show_progress_bar=False,
+            batch_size=encode_batch_size,
+            normalize_embeddings=True,
+        ).tolist()
+
+        vectors = []
+        for j, chunk in enumerate(batch):
+            vectors.append({
+                "id": f"{job_id}-{global_index}",
+                "values": embeddings[j],
+                "metadata": {
+                    "job_id": job_id,
+                    "file_path": chunk.file_path,
+                    "chunk_type": chunk.chunk_type,
+                    "start_line": chunk.start_line,
+                    "end_line": chunk.end_line,
+                    "name": chunk.name or "",
+                    "language": chunk.language,
+                    "index": global_index,
+                },
+            })
+            global_index += 1
+
+        for k in range(0, len(vectors), upsert_batch_size):
+            index.upsert(vectors=vectors[k : k + upsert_batch_size], namespace=job_id)
 
     _clear_gpu()
 
