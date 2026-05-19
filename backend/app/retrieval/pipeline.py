@@ -12,9 +12,10 @@ def build_index(job_id: str, chunks: list[Chunk]) -> None:
 
     bm25 = BM25Search()
     bm25.build(chunks)
-    _bm25_indices[job_id] = bm25
 
     embed_chunks(chunks, job_id)
+
+    del bm25
 
 
 def query_repo(job_id: str, question: str, top_k: int = 5) -> list[tuple[Chunk, float]]:

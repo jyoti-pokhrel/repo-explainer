@@ -112,13 +112,16 @@ def store_chunks_db(job_id: str, chunks: list[Chunk]) -> None:
     try:
         with conn:
             conn.execute("DELETE FROM chunks WHERE job_id = ?", (job_id,))
-            conn.executemany(
-                "INSERT INTO chunks (job_id, file_path, chunk_type, start_line, end_line, name, language, content) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                [
-                    (job_id, c.file_path, c.chunk_type, c.start_line, c.end_line, c.name, c.language, c.content)
-                    for c in chunks
-                ],
-            )
+            batch_size = 100
+            for i in range(0, len(chunks), batch_size):
+                batch = chunks[i : i + batch_size]
+                conn.executemany(
+                    "INSERT INTO chunks (job_id, file_path, chunk_type, start_line, end_line, name, language, content) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                    [
+                        (job_id, c.file_path, c.chunk_type, c.start_line, c.end_line, c.name, c.language, c.content)
+                        for c in batch
+                    ],
+                )
     finally:
         conn.close()
 
