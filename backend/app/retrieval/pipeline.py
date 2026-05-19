@@ -1,6 +1,5 @@
 from backend.app.ingestion.models import Chunk
 from backend.app.retrieval.bm25 import BM25Search
-from backend.app.retrieval.dense import embed_chunks, search_dense
 from backend.app.retrieval.rrf import reciprocal_rank_fusion
 from backend.app.storage import get_chunks_db, store_chunks_db
 
@@ -8,17 +7,20 @@ _bm25_indices: dict[str, BM25Search] = {}
 
 
 def build_index(job_id: str, chunks: list[Chunk]) -> None:
+    from backend.app.retrieval.dense import embed_chunks
+
     store_chunks_db(job_id, chunks)
 
     bm25 = BM25Search()
     bm25.build(chunks)
+    _bm25_indices[job_id] = bm25
 
     embed_chunks(chunks, job_id)
 
-    del bm25
-
 
 def query_repo(job_id: str, question: str, top_k: int = 5) -> list[tuple[Chunk, float]]:
+    from backend.app.retrieval.dense import search_dense
+
     bm25 = _bm25_indices.get(job_id)
     if not bm25:
         bm25 = _rebuild_bm25(job_id)

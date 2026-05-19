@@ -1,25 +1,35 @@
 import re
 import nltk
 from nltk.stem import PorterStemmer
-from nltk.corpus import stopwords
 from rank_bm25 import BM25Okapi
 
 from backend.app.ingestion.models import Chunk
 
-for resource in ("punkt_tab", "stopwords"):
-    try:
-        nltk.data.find(f"tokenizers/{resource}" if resource == "punkt_tab" else f"corpora/{resource}")
-    except LookupError:
-        nltk.download(resource, quiet=True)
+_nltk_initialized = False
 
 CAMEL_CASE = re.compile(r"([a-z0-9])([A-Z])")
 CODE_OPERATORS = re.compile(r"(==|!=|<=|>=|->|::|\+\+|--|&&|\|\||\.\.\.)")
 
 _stemmer = PorterStemmer()
-_stop_words = set(stopwords.words("english"))
+_stop_words: set[str] | None = None
+
+
+def _ensure_nltk():
+    global _nltk_initialized, _stop_words
+    if _nltk_initialized:
+        return
+    for resource in ("punkt_tab", "stopwords"):
+        try:
+            nltk.data.find(f"tokenizers/{resource}" if resource == "punkt_tab" else f"corpora/{resource}")
+        except LookupError:
+            nltk.download(resource, quiet=True)
+    from nltk.corpus import stopwords
+    _stop_words = set(stopwords.words("english"))
+    _nltk_initialized = True
 
 
 def tokenize(text: str, is_query: bool = False) -> list[str]:
+    _ensure_nltk()
     tokens: list[str] = []
     for op in CODE_OPERATORS.finditer(text):
         tokens.append(op.group())

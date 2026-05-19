@@ -1,28 +1,38 @@
 import os
+from typing import TYPE_CHECKING
 
-import torch
 from pinecone import Pinecone, ServerlessSpec
-from sentence_transformers import SentenceTransformer
 
 from backend.app.ingestion.models import Chunk
 from backend.app.storage import get_chunks_db
+
+if TYPE_CHECKING:
+    import torch
+    from sentence_transformers import SentenceTransformer
 
 MODEL_NAME = "BAAI/bge-small-en-v1.5"
 INDEX_NAME = "codesage"
 DIMENSION = 384
 
-_device = "cuda" if torch.cuda.is_available() else "cpu"
-
 _model = None
 _pc = None
-
+_device = None
 _indexes: dict[str, object] = {}
+
+
+def _get_device():
+    global _device
+    if _device is None:
+        import torch
+        _device = "cuda" if torch.cuda.is_available() else "cpu"
+    return _device
 
 
 def _get_model():
     global _model
     if _model is None:
-        _model = SentenceTransformer(MODEL_NAME, device=_device)
+        from sentence_transformers import SentenceTransformer
+        _model = SentenceTransformer(MODEL_NAME, device=_get_device())
     return _model
 
 
@@ -37,7 +47,8 @@ def _get_pc():
 
 
 def _clear_gpu():
-    if _device == "cuda":
+    if _get_device() == "cuda":
+        import torch
         torch.cuda.empty_cache()
 
 
