@@ -13,5 +13,16 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Trigger Render Deploy
+        if: env.RENDER_DEPLOY_HOOK_URL != ''
         run: |
           curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+
+      - name: Notify Missing Secret
+        if: env.RENDER_DEPLOY_HOOK_URL == ''
+        run: |
+          echo "::warning:: RENDER_DEPLOY_HOOK_URL secret is not configured in GitHub Secrets."
+          echo "Deployment skipped. Please add the secret in your repository Settings -> Secrets and variables -> Actions."
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
