@@ -18,10 +18,18 @@ def clone_repo(url: str) -> tempfile.TemporaryDirectory:
         raise ValueError(f"Invalid GitHub URL: {url}")
 
     temp_dir = tempfile.TemporaryDirectory(prefix="codesage_")
+    print(f"[CLONER] Attempting to clone repository: {url} into {temp_dir.name}")
     try:
-        git.Repo.clone_from(url, temp_dir.name)
+        # Disable terminal prompts to prevent git from hanging on private/auth requests
+        git.Repo.clone_from(url, temp_dir.name, env={"GIT_TERMINAL_PROMPT": "0"})
+        print(f"[CLONER] Successfully cloned repository: {url}")
     except git.GitCommandError as e:
+        print(f"[CLONER] GitCommandError while cloning repository: {e}")
         temp_dir.cleanup()
         raise RuntimeError(f"Failed to clone repository: {e}") from e
+    except Exception as e:
+        print(f"[CLONER] Unexpected error while cloning repository: {e}")
+        temp_dir.cleanup()
+        raise e
 
     return temp_dir
