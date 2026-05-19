@@ -1,3 +1,13 @@
+---
+title: Repository Explainer
+emoji: 🔍
+colorFrom: blue
+colorTo: purple
+sdk: docker
+pinned: false
+license: mit
+---
+
 # repo_explainer
 
 Hybrid RAG system that answers natural language questions about any GitHub repository. Paste a URL, it clones, parses, indexes, and returns answers grounded in actual code with file:line citations.
