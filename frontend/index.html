@@ -111,7 +111,91 @@
             font-size: 1.125rem;
             color: oklch(0.58 0.002 260);
         }
+
+        /* Markdown Body Styles */
+        .markdown-body h1, .markdown-body h2, .markdown-body h3 {
+            font-weight: 600;
+            color: oklch(0.90 0.002 260);
+            margin-top: 1.75rem;
+            margin-bottom: 0.75rem;
+        }
+        .markdown-body h1 { font-size: 1.625rem; }
+        .markdown-body h2 { font-size: 1.375rem; border-bottom: 1px solid oklch(0.22 0.002 260); padding-bottom: 0.35rem; }
+        .markdown-body h3 { font-size: 1.25rem; }
+        
+        .markdown-body p {
+            margin-bottom: 1.125rem;
+            line-height: 1.75;
+            color: oklch(0.85 0.002 260);
+        }
+        
+        .markdown-body ul {
+            list-style-type: disc;
+            padding-left: 1.75rem;
+            margin-bottom: 1.125rem;
+        }
+        
+        .markdown-body ol {
+            list-style-type: decimal;
+            padding-left: 1.75rem;
+            margin-bottom: 1.125rem;
+        }
+        
+        .markdown-body li {
+            margin-bottom: 0.5rem;
+            line-height: 1.7;
+        }
+        
+        .markdown-body code {
+            font-family: "SF Mono", "Cascadia Code", "Fira Code", monospace;
+            font-size: 0.8125em;
+            background-color: oklch(0.18 0.002 260);
+            padding: 0.15rem 0.35rem;
+            border-radius: 4px;
+            color: oklch(0.92 0.002 260);
+            border: 1px solid oklch(0.24 0.002 260);
+        }
+        
+        .markdown-body pre {
+            background-color: oklch(0.16 0.002 260);
+            border: 1px solid oklch(0.22 0.002 260);
+            border-radius: 6px;
+            padding: 1.25rem;
+            overflow-x: auto;
+            margin-bottom: 1.375rem;
+        }
+        
+        .markdown-body pre code {
+            background-color: transparent;
+            border: none;
+            padding: 0;
+            font-size: 0.875rem;
+            line-height: 1.6;
+            color: oklch(0.85 0.002 260);
+        }
+
+        .markdown-body a {
+            color: oklch(0.72 0.002 260);
+            text-decoration: underline;
+            transition: color 150ms ease-out;
+        }
+        .markdown-body a:hover {
+            color: oklch(0.85 0.002 260);
+        }
+
+        /* Active dot pulsing animation */
+        .dot-pulse {
+            box-shadow: 0 0 0 0 oklch(0.65 0.002 260 / 0.7);
+            animation: pulse-dot 1.5s infinite cubic-bezier(0.66, 0, 0, 1);
+        }
+        
+        @keyframes pulse-dot {
+            to {
+                box-shadow: 0 0 0 8px oklch(0.65 0.002 260 / 0);
+            }
+        }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body class="font-sans text-content-primary antialiased min-h-screen text-[1.375rem]">
 
@@ -257,7 +341,19 @@
 
             <!-- Results -->
             <div id="query-result" class="hidden">
-                <div id="answer-text" class="text-[1.375rem] text-content-primary leading-[1.7] whitespace-pre-wrap"></div>
+                <!-- Query Progress/Status Steps -->
+                <div id="query-progress-steps" class="hidden mb-8 space-y-4">
+                    <div id="step-search" class="flex items-center gap-3.5">
+                        <span id="step-search-dot" class="w-[8px] h-[8px] rounded-full shrink-0 bg-dot-inactive transition-all duration-300"></span>
+                        <span id="step-search-text" class="text-content-muted font-mono tracking-tight uppercase text-[0.875rem] font-semibold">Searching Codebase (Sparse & Dense Fusion)...</span>
+                    </div>
+                    <div id="step-generate" class="flex items-center gap-3.5">
+                        <span id="step-generate-dot" class="w-[8px] h-[8px] rounded-full shrink-0 bg-dot-inactive transition-all duration-300"></span>
+                        <span id="step-generate-text" class="text-content-muted font-mono tracking-tight uppercase text-[0.875rem] font-semibold">Synthesizing Answer (Llama 3.1)...</span>
+                    </div>
+                </div>
+
+                <div id="answer-text" class="markdown-body text-[1.375rem] text-content-primary leading-[1.7]"></div>
 
                 <!-- Citations row -->
                 <div id="citations" class="hidden mt-6 pt-4 border-t border-edge">
@@ -277,6 +373,30 @@
             </div>
         </section>
 
+    </div>
+
+    <!-- Code Explorer Modal -->
+    <div id="code-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-8 bg-base/85 backdrop-blur-sm transition-all duration-300">
+        <div class="w-full max-w-[56rem] max-h-[85vh] flex flex-col bg-surface border border-edge rounded-lg shadow-2xl overflow-hidden">
+            <!-- Header -->
+            <div class="flex items-center justify-between px-6 py-4 border-b border-edge">
+                <div class="flex items-center gap-2.5">
+                    <svg class="w-5 h-5 text-content-secondary" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5"></path>
+                    </svg>
+                    <span id="modal-filepath" class="font-mono text-[1.125rem] text-content-primary font-semibold"></span>
+                </div>
+                <button onclick="window.closeCodeModal()" class="text-content-muted hover:text-content-primary transition">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <!-- Code container -->
+            <div class="flex-1 overflow-auto p-6 font-mono text-[0.875rem] leading-[1.6] bg-base text-content-primary">
+                <pre class="w-full h-full"><code id="modal-code-content" class="block w-full whitespace-pre overflow-x-auto"></code></pre>
+            </div>
+        </div>
     </div>
 
     <script src="/static/js/app.js"></script>

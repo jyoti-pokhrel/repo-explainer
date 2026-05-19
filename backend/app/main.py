@@ -83,6 +83,21 @@ async def get_metadata(job_id: str):
     return metadata.to_dict()
 
 
+@app.get("/api/code/{job_id}")
+async def get_code(job_id: str, file_path: str):
+    from backend.app.storage import get_chunks_db
+    chunks = get_chunks_db(job_id)
+    # Match any chunks that contain the requested file path (handling partial matches if needed)
+    matching = [c for c in chunks if c.file_path == file_path or c.file_path.endswith(file_path)]
+    if not matching:
+        return {"error": "File not found"}
+    matching.sort(key=lambda x: x.start_line)
+    return {
+        "file_path": file_path,
+        "chunks": [{"start": c.start_line, "end": c.end_line, "content": c.content} for c in matching]
+    }
+
+
 @app.post("/api/query")
 async def query_endpoint(request: QueryRequest):
     job_id = request.job_id or get_last_completed_job()
