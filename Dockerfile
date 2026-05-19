@@ -18,7 +18,7 @@ RUN uv sync --frozen --no-dev
 
 FROM base AS model-cache
 
-RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('BAAI/bge-small-en-v1.5')"
+RUN uv run python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('BAAI/bge-small-en-v1.5')"
 
 COPY --from=base /app/.venv /app/.venv
 
