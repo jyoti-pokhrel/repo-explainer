@@ -195,40 +195,46 @@ function formatCitations(text) {
 function preProcessMarkdown(text) {
     let processed = text;
     
-    // 1. Split inline numbered list items onto separate lines FIRST
-    // e.g. "process: 1. Step one 2. Step two" -> "process:\n1. Step one\n2. Step two"
+    // 1. Split inline numbered list items onto separate lines
     processed = processed.replace(/([^\n])\s+(?=\d+\.\s)/g, "$1\n");
     
-    // 2. Split inline bullet points (hyphen, asterisk, plus) onto separate lines.
-    // Handle multiple spaces/tabs before bullets
+    // 2. Split inline bullet points onto separate lines
     processed = processed.replace(/([^\n])\s+([-\*\+]\s+)/g, "$1\n$2");
     
-    // 3. Normalize bullet marker spacing (fix "  - " or "- text" inconsistencies)
-    // Ensures all bullets use "- " with exactly one space after
-    processed = processed.replace(/^[\t ]*[-\*\+][\t ]+/gm, "- ");
+    // 3. Normalize bullet markers (preserve leading whitespace for nested lists)
+    processed = processed.replace(/^([\t ]*)[-\*\+][\t ]+/gm, "$1- ");
     
-    // 4. Heal spacing inconsistencies around underscores (e.g. "retrieve _p apers ()" -> "retrieve_papers()")
+    // 4. Heal backtick code spans (lazy matching, context-aware joining)
+    processed = processed.replace(/`([^`]+?)`/g, (match, code) => {
+        let cleaned = code.replace(/\s+/g, " ").trim();
+        cleaned = cleaned.replace(/\s*_\s*/g, "_");
+        cleaned = cleaned.replace(/\s*\/\s*/g, "/");
+        cleaned = cleaned.replace(/\s*\.\s*(\w+)/g, ".$1");
+        // Only fully collapse if result looks like a code identifier
+        const collapsed = cleaned.replace(/\s+/g, "");
+        if (collapsed.includes("_") || collapsed.includes("/") || collapsed.includes(".")) {
+            return "`" + collapsed + "`";
+        }
+        return "`" + cleaned + "`";
+    });
+    
+    // 5. Heal spacing around underscores
     processed = processed.replace(/\s*_\s*/g, "_");
     
-    // 5. Heal spacing inconsistencies around directory/file slashes (e.g. "app / services / fetcher" -> "app/services/fetcher")
+    // 6. Heal spacing around slashes
     processed = processed.replace(/\s*\/\s*/g, "/");
     
-    // 6. Heal spacing inconsistencies around file extensions (e.g. "fetcher . py" -> "fetcher.py")
+    // 7. Heal spacing around file extensions
     processed = processed.replace(/\s*\.\s*(py|js|ts|go|java|json|yml|yaml|md|txt|sh|html|css|c|cpp|h)/gi, ".$1");
     
-    // 7. Heal short tokenization spacing anomalies adjacent to underscores (e.g. "g ap_detector" -> "gap_detector", "_g aps" -> "_gaps")
-    // Match 1-3 letters, space, followed by word characters and underscore
-    processed = processed.replace(/\b(\w{1,3})\s+(\w+_(?:\w+)?)/g, "$1$2");
-    // Match underscore and word characters, space, followed by 1-3 letters
-    processed = processed.replace(/((?:\w+)?_\w+)\s+(\w{1,3})\b/g, "$1$2");
-
-    // 8. Heal spaces inside backticked code blocks that represent variables/files (e.g. `detect_future_work_con vergence_g aps` -> `detect_future_work_convergence_gaps`)
-    processed = processed.replace(/`([^`]+)`/g, (match, code) => {
-        if (code.includes("_") || code.includes("/") || code.includes(".")) {
-            return "`" + code.replace(/\s+/g, "") + "`";
-        }
-        return match;
-    });
+    // 8. Context-aware split-word joining (only near code context)
+    // Join split words when followed by underscore, parenthesis, or dot
+    processed = processed.replace(/\b(\w+)\s+(\w+)(?=\s*[_\(])/g, "$1$2");
+    // Join split words when preceded by underscore or parenthesis
+    processed = processed.replace(/(?<=[_\)])\s+(\w+)\s+(\w+)\b/g, "$1$2");
+    // Join short tokens adjacent to underscore-containing words
+    processed = processed.replace(/\b(\w{1,3})\s+(\w+_\w+)/g, "$1$2");
+    processed = processed.replace(/(\w+_\w+)\s+(\w{1,3})\b/g, "$1$2");
 
     return processed;
 }
@@ -351,6 +357,10 @@ queryForm.addEventListener("submit", async (e) => {
         queryProgressSteps.classList.add("hidden");
         
         let rawAnswer = data.error || data.answer || "";
+        // Fix truncated code blocks
+        if ((rawAnswer.match(/```/g) || []).length % 2 !== 0) {
+            rawAnswer += "\n```";
+        }
         let processedText = preProcessMarkdown(rawAnswer);
         let parsedHTML = marked.parse(processedText);
         answerText.innerHTML = formatCitations(parsedHTML);
@@ -411,6 +421,14 @@ queryForm.addEventListener("submit", async (e) => {
             answer += data;
             
             // Streaming Markdown Rendering + Citations Badges parsing
+            let processedText = preProcessMarkdown(answer);
+            let rawHTML = marked.parse(processedText);
+            answerText.innerHTML = formatCitations(rawHTML);
+        }
+
+        // Fix truncated code blocks after streaming completes
+        if ((answer.match(/```/g) || []).length % 2 !== 0) {
+            answer += "\n```";
             let processedText = preProcessMarkdown(answer);
             let rawHTML = marked.parse(processedText);
             answerText.innerHTML = formatCitations(rawHTML);
