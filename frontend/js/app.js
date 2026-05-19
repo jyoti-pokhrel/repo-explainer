@@ -169,20 +169,68 @@ function setStepInactive(stepId) {
 
 // Citations Parser & Formatter
 function formatCitations(text) {
-    // Matches patterns like [app/services/retrieval/fetcher.py:27-109] or [fetcher.py:27]
-    const citationRegex = /\[([\w\-\.\/]+):(\d+)(?:-(\d+))?\]/g;
+    // Highly robust match, allowing arbitrary whitespace, dashes, and newlines inside the citation brackets
+    // e.g. matches [app/services/fetcher.py:27-109], spaced [ app / services / fetcher.py : 27 - 109 ], and newline [fetcher.py : 27\n109]
+    const citationRegex = /\[\s*([\w\-\.\/\s]+?)\s*:\s*(\d+)\s*(?:[\-\s\n]+(\d+))?\s*\]/g;
     
     return text.replace(citationRegex, (match, filepath, startLine, endLine) => {
-        const linesStr = endLine ? `${startLine}-${endLine}` : `${startLine}`;
-        const escapedPath = filepath.replace(/'/g, "\\'");
+        // Clean all whitespace inside path and numbers
+        const cleanPath = filepath.replace(/\s+/g, "");
+        const start = parseInt(startLine.replace(/\s+/g, ""), 10);
+        const end = endLine ? parseInt(endLine.replace(/\s+/g, ""), 10) : start;
         
-        return `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 my-0.5 rounded font-mono text-[0.8125rem] bg-surface-raised border border-edge text-content-secondary hover:text-content-primary hover:border-content-secondary transition cursor-pointer select-none" onclick="window.highlightFile('${escapedPath}', ${startLine}, ${endLine || startLine})">
+        const linesStr = end !== start ? `${start}-${end}` : `${start}`;
+        const escapedPath = cleanPath.replace(/'/g, "\\'");
+        
+        return `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 my-0.5 rounded font-mono text-[0.8125rem] bg-surface-raised border border-edge text-content-secondary hover:text-content-primary hover:border-content-secondary transition cursor-pointer select-none" onclick="window.highlightFile('${escapedPath}', ${start}, ${end})">
             <svg class="w-3.5 h-3.5 text-content-muted" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
             </svg>
-            ${filepath}:${linesStr}
+            ${cleanPath}:${linesStr}
         </span>`;
     });
+}
+
+// Pre-process raw LLM text stream before parsing markdown
+function preProcessMarkdown(text) {
+    let processed = text;
+    
+    // 1. Split inline numbered list items onto separate lines FIRST
+    // e.g. "process: 1. Step one 2. Step two" -> "process:\n1. Step one\n2. Step two"
+    processed = processed.replace(/([^\n])\s+(?=\d+\.\s)/g, "$1\n");
+    
+    // 2. Split inline bullet points (hyphen, asterisk, plus) onto separate lines.
+    // Handle multiple spaces/tabs before bullets
+    processed = processed.replace(/([^\n])\s+([-\*\+]\s+)/g, "$1\n$2");
+    
+    // 3. Normalize bullet marker spacing (fix "  - " or "- text" inconsistencies)
+    // Ensures all bullets use "- " with exactly one space after
+    processed = processed.replace(/^[\t ]*[-\*\+][\t ]+/gm, "- ");
+    
+    // 4. Heal spacing inconsistencies around underscores (e.g. "retrieve _p apers ()" -> "retrieve_papers()")
+    processed = processed.replace(/\s*_\s*/g, "_");
+    
+    // 5. Heal spacing inconsistencies around directory/file slashes (e.g. "app / services / fetcher" -> "app/services/fetcher")
+    processed = processed.replace(/\s*\/\s*/g, "/");
+    
+    // 6. Heal spacing inconsistencies around file extensions (e.g. "fetcher . py" -> "fetcher.py")
+    processed = processed.replace(/\s*\.\s*(py|js|ts|go|java|json|yml|yaml|md|txt|sh|html|css|c|cpp|h)/gi, ".$1");
+    
+    // 7. Heal short tokenization spacing anomalies adjacent to underscores (e.g. "g ap_detector" -> "gap_detector", "_g aps" -> "_gaps")
+    // Match 1-3 letters, space, followed by word characters and underscore
+    processed = processed.replace(/\b(\w{1,3})\s+(\w+_(?:\w+)?)/g, "$1$2");
+    // Match underscore and word characters, space, followed by 1-3 letters
+    processed = processed.replace(/((?:\w+)?_\w+)\s+(\w{1,3})\b/g, "$1$2");
+
+    // 8. Heal spaces inside backticked code blocks that represent variables/files (e.g. `detect_future_work_con vergence_g aps` -> `detect_future_work_convergence_gaps`)
+    processed = processed.replace(/`([^`]+)`/g, (match, code) => {
+        if (code.includes("_") || code.includes("/") || code.includes(".")) {
+            return "`" + code.replace(/\s+/g, "") + "`";
+        }
+        return match;
+    });
+
+    return processed;
 }
 
 // Code Explorer Modal Handlers
@@ -303,7 +351,8 @@ queryForm.addEventListener("submit", async (e) => {
         queryProgressSteps.classList.add("hidden");
         
         let rawAnswer = data.error || data.answer || "";
-        let parsedHTML = marked.parse(rawAnswer);
+        let processedText = preProcessMarkdown(rawAnswer);
+        let parsedHTML = marked.parse(processedText);
         answerText.innerHTML = formatCitations(parsedHTML);
         
         queryBtn.disabled = false;
@@ -362,7 +411,8 @@ queryForm.addEventListener("submit", async (e) => {
             answer += data;
             
             // Streaming Markdown Rendering + Citations Badges parsing
-            let rawHTML = marked.parse(answer);
+            let processedText = preProcessMarkdown(answer);
+            let rawHTML = marked.parse(processedText);
             answerText.innerHTML = formatCitations(rawHTML);
         }
     } else {

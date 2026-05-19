@@ -75,12 +75,14 @@ def _build_prompt(question: str, chunks: list[tuple[Chunk, float]], metadata: Re
 
 ## Rules
 
-- Answer only from the provided context and metadata
-- Cite sources as [file_path:line_start-line_end] inline
-- If context is insufficient, explicitly say what's missing
-- Include relevant code snippets in your answer
-- Be concise but thorough
-- When asked about ORMs, databases, or frameworks, reference the metadata section first"""
+- Answer only from the provided context and metadata.
+- Cite sources EXACTLY as [file_path:line_start-line_end] inline. Never introduce spaces inside the brackets or path (e.g., use `[app/services/fetcher.py:27-109]`, NOT `[ app / services / fetcher.py : 27 - 109 ]`).
+- Always write list items (numbered or bullet points) on separate new lines. Never group multiple steps or items into a single inline paragraph.
+- Always wrap every file name, directory, class, method, function, or variable in backticks for monospace formatting (e.g., `retrieve_papers()`, `fetcher.py`, `PaperSearchResponse`).
+- If context is insufficient, explicitly say what's missing.
+- Include relevant code snippets in your answer.
+- Be concise but thorough.
+- When asked about ORMs, databases, or frameworks, reference the metadata section first."""
 
 
 def generate_answer(question: str, chunks: list[tuple[Chunk, float]], metadata: RepoMetadata | None = None, summary: str = "") -> str:
