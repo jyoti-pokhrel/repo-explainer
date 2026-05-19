@@ -1,24 +1,39 @@
 import os
 
 import torch
-from dotenv import load_dotenv
 from pinecone import Pinecone, ServerlessSpec
 from sentence_transformers import SentenceTransformer
 
 from backend.app.ingestion.models import Chunk
 from backend.app.storage import get_chunks_db
 
-load_dotenv()
-
 MODEL_NAME = "BAAI/bge-small-en-v1.5"
 INDEX_NAME = "codesage"
 DIMENSION = 384
 
 _device = "cuda" if torch.cuda.is_available() else "cpu"
-_model = SentenceTransformer(MODEL_NAME, device=_device)
-_pc = Pinecone(api_key=os.environ["PINECONE_API_KEY"])
+
+_model = None
+_pc = None
 
 _indexes: dict[str, object] = {}
+
+
+def _get_model():
+    global _model
+    if _model is None:
+        _model = SentenceTransformer(MODEL_NAME, device=_device)
+    return _model
+
+
+def _get_pc():
+    global _pc
+    if _pc is None:
+        api_key = os.environ.get("PINECONE_API_KEY")
+        if not api_key:
+            raise RuntimeError("PINECONE_API_KEY environment variable is required")
+        _pc = Pinecone(api_key=api_key)
+    return _pc
 
 
 def _clear_gpu():
@@ -30,15 +45,16 @@ def _get_or_create_index(job_id: str):
     if job_id in _indexes:
         return _indexes[job_id]
 
-    if INDEX_NAME not in _pc.list_indexes().names():
-        _pc.create_index(
+    pc = _get_pc()
+    if INDEX_NAME not in pc.list_indexes().names():
+        pc.create_index(
             name=INDEX_NAME,
             dimension=DIMENSION,
             metric="cosine",
             spec=ServerlessSpec(cloud="aws", region="us-east-1"),
         )
 
-    idx = _pc.Index(INDEX_NAME)
+    idx = pc.Index(INDEX_NAME)
     _indexes[job_id] = idx
     return idx
 
@@ -56,8 +72,9 @@ def _enrich_chunk(chunk: Chunk) -> str:
 
 def embed_chunks(chunks: list[Chunk], job_id: str) -> None:
     index = _get_or_create_index(job_id)
+    model = _get_model()
     enriched = [_enrich_chunk(c) for c in chunks]
-    embeddings = _model.encode(
+    embeddings = model.encode(
         enriched,
         show_progress_bar=False,
         batch_size=32,
@@ -90,7 +107,8 @@ def embed_chunks(chunks: list[Chunk], job_id: str) -> None:
 
 def search_dense(query: str, job_id: str, top_k: int = 20) -> list[tuple[Chunk, float]]:
     index = _get_or_create_index(job_id)
-    query_embedding = _model.encode([query], normalize_embeddings=True).tolist()[0]
+    model = _get_model()
+    query_embedding = model.encode([query], normalize_embeddings=True).tolist()[0]
 
     results = index.query(
         vector=query_embedding,

@@ -7,6 +7,8 @@ from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 from dotenv import load_dotenv
 
+load_dotenv()
+
 from backend.app.ingestion.cloner import clone_repo, validate_github_url
 from backend.app.ingestion.parser import parse_repo
 from backend.app.ingestion.chunker import chunk_document
@@ -17,8 +19,6 @@ from backend.app.retrieval.summarizer import generate_summary
 from backend.app.generation import stream_answer
 from backend.app.storage import store_job, update_job, get_job, get_last_completed_job, get_metadata_db, store_metadata_db
 
-load_dotenv()
-
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 FRONTEND_DIR = BASE_DIR / "frontend"
 
@@ -27,6 +27,11 @@ app = FastAPI(title="CodeSage", description="Hybrid RAG for codebases")
 app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR)), name="static")
 
 QUERY_TIMEOUT = 30
+
+
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
 
 
 class IndexRequest(BaseModel):

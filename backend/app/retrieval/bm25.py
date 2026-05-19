@@ -6,8 +6,11 @@ from rank_bm25 import BM25Okapi
 
 from backend.app.ingestion.models import Chunk
 
-nltk.download("punkt_tab", quiet=True)
-nltk.download("stopwords", quiet=True)
+for resource in ("punkt_tab", "stopwords"):
+    try:
+        nltk.data.find(f"tokenizers/{resource}" if resource == "punkt_tab" else f"corpora/{resource}")
+    except LookupError:
+        nltk.download(resource, quiet=True)
 
 CAMEL_CASE = re.compile(r"([a-z0-9])([A-Z])")
 CODE_OPERATORS = re.compile(r"(==|!=|<=|>=|->|::|\+\+|--|&&|\|\||\.\.\.)")

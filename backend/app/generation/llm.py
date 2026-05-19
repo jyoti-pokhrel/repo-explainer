@@ -1,16 +1,23 @@
 import os
 from typing import Iterator
 
-from dotenv import load_dotenv
 from groq import Groq
 
 from backend.app.ingestion.metadata import RepoMetadata
 from backend.app.ingestion.models import Chunk
 
-load_dotenv()
-
 MODEL = "llama-3.3-70b-versatile"
-_client = Groq(api_key=os.environ.get("GROQ_API_KEY", ""), timeout=30)
+_client = None
+
+
+def _get_client():
+    global _client
+    if _client is None:
+        api_key = os.environ.get("GROQ_API_KEY")
+        if not api_key:
+            raise RuntimeError("GROQ_API_KEY environment variable is required")
+        _client = Groq(api_key=api_key, timeout=30)
+    return _client
 
 
 def _build_prompt(question: str, chunks: list[tuple[Chunk, float]], metadata: RepoMetadata | None = None, summary: str = "") -> str:
@@ -78,7 +85,7 @@ def _build_prompt(question: str, chunks: list[tuple[Chunk, float]], metadata: Re
 
 def generate_answer(question: str, chunks: list[tuple[Chunk, float]], metadata: RepoMetadata | None = None, summary: str = "") -> str:
     prompt = _build_prompt(question, chunks, metadata, summary)
-    response = _client.chat.completions.create(
+    response = _get_client().chat.completions.create(
         model=MODEL,
         messages=[{"role": "user", "content": prompt}],
         temperature=0.1,
@@ -89,7 +96,7 @@ def generate_answer(question: str, chunks: list[tuple[Chunk, float]], metadata: 
 
 def stream_answer(question: str, chunks: list[tuple[Chunk, float]], metadata: RepoMetadata | None = None, summary: str = "") -> Iterator[str]:
     prompt = _build_prompt(question, chunks, metadata, summary)
-    stream = _client.chat.completions.create(
+    stream = _get_client().chat.completions.create(
         model=MODEL,
         messages=[{"role": "user", "content": prompt}],
         temperature=0.1,
