@@ -1,3 +1,4 @@
+import os
 import re
 import tempfile
 from pathlib import Path
@@ -20,8 +21,8 @@ def clone_repo(url: str) -> tempfile.TemporaryDirectory:
     temp_dir = tempfile.TemporaryDirectory(prefix="codesage_")
     print(f"[CLONER] Attempting to clone repository: {url} into {temp_dir.name}")
     try:
-        # Disable terminal prompts to prevent git from hanging on private/auth requests
-        git.Repo.clone_from(url, temp_dir.name, env={"GIT_TERMINAL_PROMPT": "0"})
+        env = {**os.environ, "GIT_TERMINAL_PROMPT": "0"}
+        git.Repo.clone_from(url, temp_dir.name, env=env)
         print(f"[CLONER] Successfully cloned repository: {url}")
     except git.GitCommandError as e:
         print(f"[CLONER] GitCommandError while cloning repository: {e}")
